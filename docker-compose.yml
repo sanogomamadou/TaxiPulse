@@ -1,0 +1,9 @@
+services:
+  pubsub-emulator:
+    image: gcr.io/google.com/cloudsdktool/cloud-sdk:emulators
+    command: >
+      gcloud beta emulators pubsub start
+      --project=${GCP_PROJECT_ID:-taxipulse-mds}
+      --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"

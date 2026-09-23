@@ -122,12 +122,31 @@ make sample-data    # download a small local sample of NYC TLC trip data
 make destroy        # destroy all GCP resources provisioned via Terraform
 ```
 
+### Running the streaming stack locally
+
+No GCP project is needed for this - everything runs against a local Pub/Sub
+emulator (Docker) and Apache Beam's DirectRunner.
+
+```bash
+make sample-data                          # download a small TLC sample into data/sample/
+make emulator-up                          # start the local Pub/Sub emulator
+make emulator-setup                       # create the taxi-trips topic/subscription
+make pipeline-local                       # start the Beam pipeline (DirectRunner), in one terminal
+make replay SAMPLE=data/sample/yellow_tripdata_2024-01_sample.parquet ARGS="--speedup 600"
+                                           # replay the sample into Pub/Sub, in another terminal
+make emulator-down                        # stop the emulator when done
+```
+
+Zone aggregates and dead-lettered messages are written as JSON Lines under
+`output/`.
+
 ## Roadmap
 
 - [x] **Phase 0** — Monorepo scaffolding, `CLAUDE.md`, README, Makefile, `pyproject.toml`,
       pre-commit hooks, TLC sample downloader, minimal CI (lint + tests).
-- [ ] **Phase 1** — Replayer, local Pub/Sub emulator, Apache Beam pipeline on
-      DirectRunner, with tests.
+- [x] **Phase 1** — Replayer, local Pub/Sub emulator, Apache Beam pipeline on
+      DirectRunner (parsing, dead-letter, dedup, watermarks/allowed lateness/
+      triggers, sliding-window aggregates, spike detection), with tests.
 - [ ] **Phase 2** — Base Terraform, Pub/Sub / BigQuery / Dataflow deployed on GCP.
 - [ ] **Phase 3** — BigQuery raw/staging/marts, BigQuery GIS, BigQuery ML forecasting
       model, local Airflow DAGs, short Composer deployment.

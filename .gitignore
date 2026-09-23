@@ -54,6 +54,9 @@ Thumbs.db
 # --- GCP local emulators ---
 .pubsub-emulator/
 
+# --- Local pipeline run output ---
+output/
+
 # --- Misc ---
 *.log
 .env.bak
@@ -61,3 +64,4 @@ Thumbs.db
 # --- Project working notes (not for the public repo) ---
 Promptdepart.md
 CLAUDE.md
+.claude/
