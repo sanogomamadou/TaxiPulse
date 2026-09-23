@@ -36,6 +36,7 @@ airflow = [
 line-length = 100
 target-version = "py311"
 src = [
+  "common/src",
   "replayer/src",
   "pipeline/src",
   "api/src",
@@ -49,17 +50,29 @@ select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["taxipulse_replayer", "taxipulse_pipeline", "taxipulse_api"]
+known-first-party = ["taxipulse_common", "taxipulse_replayer", "taxipulse_pipeline", "taxipulse_api"]
 
 [tool.pytest.ini_options]
-testpaths = ["replayer/tests", "pipeline/tests", "api/tests", "orchestration/tests"]
+testpaths = ["common/tests", "replayer/tests", "pipeline/tests", "api/tests", "orchestration/tests"]
 pythonpath = [
+  "common/src",
   "replayer/src",
   "pipeline/src",
   "api/src",
 ]
 addopts = "-ra -q"
+# Beam test helpers (TestPipeline, TestStream, ...) are classes named "Test*"
+# that pytest tries (and fails) to collect as test classes; this repo only
+# uses function-style tests, so silence that cosmetic warning.
+filterwarnings = ["ignore::pytest.PytestCollectionWarning"]
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# This root pyproject.toml only exists to centralize dependency management and
+# tool config (ruff, pytest) across the monorepo's components. It is not itself
+# an installable package - each component under */src is added to sys.path via
+# pytest's `pythonpath` above instead.
+packages = []
