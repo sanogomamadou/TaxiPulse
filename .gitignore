@@ -1,0 +1,63 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.Python
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Virtual envs ---
+.venv/
+venv/
+env/
+
+# --- Environment / secrets ---
+.env
+*.env.local
+*credentials*.json
+*.key.json
+service-account*.json
+*.pem
+
+# --- Terraform ---
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+.terraform.lock.hcl
+
+# --- Data (downloaded locally, never committed) ---
+data/**
+!data/.gitkeep
+
+# --- Airflow local ---
+orchestration/logs/
+orchestration/plugins/
+orchestration/.airflowdb
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- GCP local emulators ---
+.pubsub-emulator/
+
+# --- Misc ---
+*.log
+.env.bak
+
+# --- Project working notes (not for the public repo) ---
+Promptdepart.md
+CLAUDE.md
