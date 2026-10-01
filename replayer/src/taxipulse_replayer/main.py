@@ -1,6 +1,6 @@
 """CLI entry point for the replayer: reads a TLC sample, replays it in
 chronological order (sped up, and optionally with chaos injection), and
-publishes each trip as an event to Pub/Sub.
+publishes each trip as an event to Azure Event Hubs.
 
 Example:
     python -m taxipulse_replayer.main data/sample/yellow_tripdata_2024-01_sample.parquet \
@@ -53,16 +53,19 @@ def run(args: argparse.Namespace) -> int:
     events = inject_duplicates(events, duplicate_ratio)
 
     client = build_publisher_client(config)
-    publisher = TripEventPublisher(client, config.project_id, config.topic)
+    publisher = TripEventPublisher(client)
 
     published = 0
-    for event in events:
-        publisher.publish(event)
-        published += 1
-        if published % 100 == 0:
-            logger.info("published %d trips", published)
+    try:
+        for event in events:
+            publisher.publish(event)
+            published += 1
+            if published % 100 == 0:
+                logger.info("published %d trips", published)
+    finally:
+        publisher.close()
 
-    logger.info("done: published %d trips to topic '%s'", published, config.topic)
+    logger.info("done: published %d trips to hub '%s'", published, config.eventhub_name)
     return published
 
 

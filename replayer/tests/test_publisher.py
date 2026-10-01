@@ -1,9 +1,7 @@
 import json
-import os
 
 from taxipulse_common.trip_event import TripEvent
-from taxipulse_replayer.config import ReplayerConfig
-from taxipulse_replayer.publisher import TripEventPublisher, build_publisher_client
+from taxipulse_replayer.publisher import TripEventPublisher
 
 SAMPLE_EVENT = TripEvent.from_dict(
     {
@@ -23,54 +21,60 @@ SAMPLE_EVENT = TripEvent.from_dict(
 )
 
 
-class FakeFuture:
-    def __init__(self, message_id: str) -> None:
-        self._message_id = message_id
+class FakeBatch:
+    """Stands in for azure.eventhub.EventDataBatch."""
 
-    def result(self, timeout: float | None = None) -> str:
-        return self._message_id
+    def __init__(self) -> None:
+        self.events: list = []
+
+    def add(self, event_data) -> None:
+        self.events.append(event_data)
 
 
-class FakePublisherClient:
-    """Stands in for google.cloud.pubsub_v1.PublisherClient so tests never
+class FakeEventHubProducerClient:
+    """Stands in for azure.eventhub.EventHubProducerClient so tests never
     hit the network or require an emulator."""
 
     def __init__(self) -> None:
-        self.published: list[dict] = []
+        self.sent_batches: list[FakeBatch] = []
+        self.closed = False
 
-    def topic_path(self, project_id: str, topic: str) -> str:
-        return f"projects/{project_id}/topics/{topic}"
+    def create_batch(self) -> FakeBatch:
+        return FakeBatch()
 
-    def publish(self, topic_path: str, data: bytes, **attributes: str) -> FakeFuture:
-        self.published.append({"topic_path": topic_path, "data": data, "attributes": attributes})
-        return FakeFuture(message_id=f"msg-{len(self.published)}")
+    def send_batch(self, batch: FakeBatch) -> None:
+        self.sent_batches.append(batch)
 
-
-def test_publish_sends_json_encoded_event_with_trip_id_attribute():
-    client = FakePublisherClient()
-    publisher = TripEventPublisher(client, project_id="taxipulse-mds", topic="taxi-trips")
-
-    message_id = publisher.publish(SAMPLE_EVENT)
-
-    assert message_id == "msg-1"
-    assert len(client.published) == 1
-    sent = client.published[0]
-    assert sent["topic_path"] == "projects/taxipulse-mds/topics/taxi-trips"
-    assert sent["attributes"] == {"trip_id": "abc-123"}
-    assert json.loads(sent["data"])["trip_id"] == "abc-123"
+    def close(self) -> None:
+        self.closed = True
 
 
-def test_build_publisher_client_sets_emulator_host_env_var(monkeypatch):
-    monkeypatch.delenv("PUBSUB_EMULATOR_HOST", raising=False)
-    config = ReplayerConfig(
-        project_id="taxipulse-mds",
-        topic="taxi-trips",
-        speedup_factor=60,
-        inject_late_ratio=0.0,
-        inject_duplicate_ratio=0.0,
-        emulator_host="localhost:8085",
-    )
+def test_publish_sends_json_encoded_event_with_trip_id_property():
+    client = FakeEventHubProducerClient()
+    publisher = TripEventPublisher(client)
 
-    build_publisher_client(config)
+    publisher.publish(SAMPLE_EVENT)
 
-    assert os.environ["PUBSUB_EMULATOR_HOST"] == "localhost:8085"
+    assert len(client.sent_batches) == 1
+    (sent_event,) = client.sent_batches[0].events
+    assert sent_event.properties == {"trip_id": "abc-123"}
+    assert json.loads(sent_event.body_as_str())["trip_id"] == "abc-123"
+
+
+def test_publish_multiple_events_sends_one_batch_each():
+    client = FakeEventHubProducerClient()
+    publisher = TripEventPublisher(client)
+
+    publisher.publish(SAMPLE_EVENT)
+    publisher.publish(SAMPLE_EVENT)
+
+    assert len(client.sent_batches) == 2
+
+
+def test_close_closes_the_underlying_client():
+    client = FakeEventHubProducerClient()
+    publisher = TripEventPublisher(client)
+
+    publisher.close()
+
+    assert client.closed is True

@@ -13,20 +13,18 @@ load_dotenv()
 
 @dataclass(frozen=True, slots=True)
 class ReplayerConfig:
-    project_id: str
-    topic: str
+    eventhub_connection_string: str
+    eventhub_name: str
     speedup_factor: float
     inject_late_ratio: float
     inject_duplicate_ratio: float
-    emulator_host: str | None
 
     @classmethod
     def from_env(cls) -> ReplayerConfig:
         return cls(
-            project_id=os.environ.get("GCP_PROJECT_ID", "taxipulse-mds"),
-            topic=os.environ.get("PUBSUB_TOPIC_TRIPS", "taxi-trips"),
+            eventhub_connection_string=os.environ.get("AZURE_EVENTHUB_CONNECTION_STRING", ""),
+            eventhub_name=os.environ.get("AZURE_EVENTHUB_NAME", "taxi-trips"),
             speedup_factor=float(os.environ.get("REPLAYER_SPEEDUP_FACTOR", "60")),
             inject_late_ratio=float(os.environ.get("REPLAYER_INJECT_LATE_RATIO", "0.0")),
             inject_duplicate_ratio=float(os.environ.get("REPLAYER_INJECT_DUPLICATE_RATIO", "0.0")),
-            emulator_host=os.environ.get("PUBSUB_EMULATOR_HOST") or None,
         )

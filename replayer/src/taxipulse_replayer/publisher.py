@@ -1,13 +1,13 @@
-"""Publishes TripEvent objects to a Pub/Sub topic, transparently targeting
-either real GCP Pub/Sub or a local emulator."""
+"""Publishes TripEvent objects to an Azure Event Hub, transparently
+targeting either a real Event Hubs namespace or a local emulator (both are
+reached the same way: a connection string)."""
 
 from __future__ import annotations
 
 import logging
-import os
 
-from google.api_core.exceptions import GoogleAPIError
-from google.cloud import pubsub_v1
+from azure.eventhub import EventData, EventHubProducerClient
+from azure.eventhub.exceptions import EventHubError
 
 from taxipulse_common.trip_event import TripEvent
 
@@ -16,29 +16,31 @@ from .config import ReplayerConfig
 logger = logging.getLogger(__name__)
 
 
-def build_publisher_client(config: ReplayerConfig) -> pubsub_v1.PublisherClient:
-    if config.emulator_host:
-        # google-cloud-pubsub reads PUBSUB_EMULATOR_HOST from the environment
-        # and automatically switches to an insecure, unauthenticated channel
-        # pointed at that host - no credentials needed against the emulator.
-        os.environ["PUBSUB_EMULATOR_HOST"] = config.emulator_host
-    return pubsub_v1.PublisherClient()
+def build_publisher_client(config: ReplayerConfig) -> EventHubProducerClient:
+    return EventHubProducerClient.from_connection_string(
+        conn_str=config.eventhub_connection_string,
+        eventhub_name=config.eventhub_name,
+    )
 
 
 class TripEventPublisher:
-    """Thin wrapper around the Pub/Sub client for publishing TripEvents as
-    JSON, with the trip_id attached as a message attribute for observability
-    (e.g. filtering/inspecting messages in the emulator or console)."""
+    """Thin wrapper around the Event Hubs producer client for publishing
+    TripEvents as JSON, with the trip_id attached as an application
+    property for observability."""
 
-    def __init__(self, client: pubsub_v1.PublisherClient, project_id: str, topic: str) -> None:
+    def __init__(self, client: EventHubProducerClient) -> None:
         self._client = client
-        self._topic_path = client.topic_path(project_id, topic)
 
-    def publish(self, event: TripEvent, timeout: float = 30.0) -> str:
-        data = event.to_json().encode("utf-8")
-        future = self._client.publish(self._topic_path, data=data, trip_id=event.trip_id)
+    def publish(self, event: TripEvent) -> None:
+        event_data = EventData(event.to_json())
+        event_data.properties = {"trip_id": event.trip_id}
         try:
-            return future.result(timeout=timeout)
-        except GoogleAPIError:
+            batch = self._client.create_batch()
+            batch.add(event_data)
+            self._client.send_batch(batch)
+        except EventHubError:
             logger.exception("failed to publish trip_id=%s", event.trip_id)
             raise
+
+    def close(self) -> None:
+        self._client.close()
