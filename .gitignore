@@ -34,7 +34,8 @@ service-account*.json
 !*.tfvars.example
 crash.log
 crash.*.log
-.terraform.lock.hcl
+# .terraform.lock.hcl is intentionally NOT ignored - it pins provider
+# versions and should be committed for reproducible `terraform init`.
 
 # --- Data (downloaded locally, never committed) ---
 data/**

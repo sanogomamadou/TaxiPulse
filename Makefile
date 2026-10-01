@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-cov sample-data emulator-up emulator-down emulator-setup replay pipeline-local clean destroy
+.PHONY: help install lint format test test-cov sample-data emulator-up emulator-down emulator-setup replay pipeline-local tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy
 
 help:
 	@echo "TaxiPulse - available targets:"
@@ -13,6 +13,11 @@ help:
 	@echo "  emulator-setup   Create the topics/subscription on the running emulator"
 	@echo "  replay           Run the replayer against the local emulator"
 	@echo "  pipeline-local   Run the Beam pipeline (DirectRunner) against the local emulator"
+	@echo "  tf-init          terraform init (infra/envs/dev)"
+	@echo "  tf-fmt           terraform fmt -recursive (infra/)"
+	@echo "  tf-validate      terraform validate (infra/envs/dev)"
+	@echo "  tf-plan          terraform plan (infra/envs/dev)"
+	@echo "  tf-apply         terraform apply (infra/envs/dev, asks for confirmation)"
 	@echo "  clean            Remove caches and build artifacts"
 	@echo "  destroy          Destroy ALL GCP resources managed by Terraform (asks for confirmation)"
 
@@ -55,6 +60,25 @@ pipeline-local:
 		--output_sink text --output_path output/zone_aggregates \
 		--dead_letter_output output/dead_letters \
 		--runner DirectRunner --streaming
+
+tf-init:
+	cd infra/envs/dev && terraform init
+
+tf-fmt:
+	terraform fmt -recursive infra/
+
+tf-validate:
+	cd infra/envs/dev && terraform validate
+
+tf-plan:
+	cd infra/envs/dev && terraform plan
+
+# Applies Terraform changes. Asks for confirmation on top of Terraform's own
+# interactive approval prompt - this creates/modifies real GCP resources.
+tf-apply:
+	@echo "This will CREATE/MODIFY GCP resources in project defined by infra/envs/dev/terraform.tfvars."
+	@read -p "Type 'apply' to confirm: " confirm && [ "$$confirm" = "apply" ] || (echo "Aborted."; exit 1)
+	cd infra/envs/dev && terraform apply
 
 clean:
 	find . -type d -name "__pycache__" -not -path "./.git/*" -exec rm -rf {} +
