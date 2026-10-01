@@ -1,3 +1,0 @@
-# Copy to terraform.tfvars (gitignored) and fill in real values.
-project_id = "taxipulse-mds"
-region     = "europe-west1"

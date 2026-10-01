@@ -1,7 +1,7 @@
 [project]
 name = "taxipulse"
 version = "0.1.0"
-description = "End-to-end real-time urban mobility data platform on GCP, built on NYC TLC trip data"
+description = "End-to-end real-time urban mobility data platform on Azure, built on NYC TLC trip data"
 requires-python = ">=3.11"
 readme = "README.md"
 license = { text = "MIT" }
@@ -10,10 +10,10 @@ dependencies = [
   "pyarrow>=16.0",
   "pandas>=2.2",
   "requests>=2.32",
-  "google-cloud-pubsub>=2.21",
-  "google-cloud-bigquery>=3.25",
-  "google-cloud-storage>=2.16",
-  "apache-beam[gcp]>=2.57",
+  "azure-eventhub>=5.11",
+  "azure-identity>=1.17",
+  "pyspark>=3.5",
+  "delta-spark>=3.2",
   "fastapi>=0.111",
   "uvicorn[standard]>=0.30",
   "pydantic>=2.7",
@@ -61,10 +61,6 @@ pythonpath = [
   "api/src",
 ]
 addopts = "-ra -q"
-# Beam test helpers (TestPipeline, TestStream, ...) are classes named "Test*"
-# that pytest tries (and fails) to collect as test classes; this repo only
-# uses function-style tests, so silence that cosmetic warning.
-filterwarnings = ["ignore::pytest.PytestCollectionWarning"]
 
 [build-system]
 requires = ["setuptools>=68"]

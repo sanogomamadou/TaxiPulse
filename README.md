@@ -1,36 +1,44 @@
 # TaxiPulse
 
-> **Status: Work in progress.** This is an active portfolio project. Phase 0 (project
-> scaffolding) is complete; streaming ingestion, processing, warehousing, orchestration,
-> and the serving API are being built incrementally, one phase per session. See
-> [Roadmap](#roadmap) below for what's done and what's next.
+> **Status: Work in progress.** This is an active portfolio project, built incrementally
+> one phase per session. See [Roadmap](#roadmap) below for what's done and what's next.
+>
+> **Note on cloud provider**: this project originally targeted GCP (Pub/Sub +
+> Apache Beam/Dataflow + BigQuery). That implementation is complete, tested, and
+> preserved on the [`archive/gcp-beam`](https://github.com/sanogomamadou/TaxiPulse/tree/archive/gcp-beam)
+> branch. The active implementation now targets **Azure** instead, after a GCP
+> billing blocker made the original path impractical to deploy - the architecture
+> and goals are unchanged, only the cloud services are swapped for their Azure
+> equivalents.
 
-An end-to-end real-time urban mobility data platform on Google Cloud, built on real
+An end-to-end real-time urban mobility data platform on Azure, built on real
 NYC TLC (Taxi and Limousine Commission) trip data. TaxiPulse replays historical taxi
-trips as a live event stream, processes them with Apache Beam on Dataflow, warehouses
-and forecasts demand with BigQuery and BigQuery ML, orchestrates batch and ML workflows
-with Cloud Composer, and serves real-time KPIs and forecasts through a FastAPI service
-on GKE Autopilot.
+trips as a live event stream, processes them with PySpark Structured Streaming on
+Databricks, warehouses and forecasts demand with a Delta Lake Lakehouse, orchestrates
+batch and ML workflows with Airflow, and serves real-time KPIs and forecasts through a
+FastAPI service on Azure Container Apps.
 
 ## Overview
 
 - **Source data**: [NYC TLC Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
   (public Parquet files).
-- **Replay**: a Python replayer reads historical trips and publishes them to Pub/Sub in
-  chronological order, at a configurable speed-up factor, with optional late/duplicate
-  event injection to test pipeline robustness.
-- **Stream processing**: Apache Beam (Python SDK) on Dataflow parses, validates,
+- **Replay**: a Python replayer reads historical trips and publishes them to Azure
+  Event Hubs in chronological order, at a configurable speed-up factor, with optional
+  late/duplicate event injection to test pipeline robustness.
+- **Stream processing**: PySpark Structured Streaming on Databricks parses, validates,
   deduplicates, and windows events, computing per-zone aggregates and detecting demand
-  spikes, with dead-lettering for invalid messages and explicit late-data handling.
-- **Warehouse**: BigQuery organized in raw / staging / marts layers, with a
-  geography-enriched taxi zone table (BigQuery GIS) and a per-zone, per-hour demand
-  forecasting model trained with BigQuery ML.
-- **Orchestration**: Cloud Composer (Airflow) drives batch historical loads,
+  spikes, with dead-lettering for invalid messages and explicit late-data handling via
+  watermarks.
+- **Warehouse**: a Delta Lake Lakehouse (raw / staging / marts) on ADLS Gen2, queried
+  via Databricks SQL, with a per-zone, per-hour demand forecasting model
+  (Prophet/statsmodels, tracked with MLflow).
+- **Orchestration**: a self-hosted Airflow (Docker) drives batch historical loads,
   staging/marts transformations, data quality checks, and scheduled model retraining.
 - **Serving**: a containerized FastAPI service exposes real-time KPIs, detected spikes,
-  and demand forecasts, deployed on GKE Autopilot.
+  and demand forecasts, deployed on Azure Container Apps.
 - **Infra & CI/CD**: everything is provisioned with Terraform and deployed via GitHub
-  Actions, authenticating to GCP through Workload Identity Federation (no JSON keys).
+  Actions, authenticating to Azure through federated identity credentials (OIDC, no
+  stored secrets).
 
 ## Architecture
 
@@ -42,55 +50,53 @@ flowchart LR
 
     subgraph Ingest["Ingestion"]
         Replayer["Replayer\n(Python)"]
-        PubSub[["Pub/Sub\ntaxi-trips topic"]]
-        DLQ[["Pub/Sub\nDLQ topic"]]
+        EventHub[["Event Hubs\ntaxi-trips hub"]]
     end
 
     subgraph Stream["Stream processing"]
-        Dataflow["Dataflow job\n(Apache Beam)"]
+        Databricks["Databricks job\n(PySpark Structured Streaming)"]
     end
 
-    subgraph Warehouse["BigQuery"]
-        Raw[("raw")]
+    subgraph Warehouse["Delta Lake Lakehouse (ADLS Gen2)"]
+        Raw[("raw\n(+ dead_letters)")]
         Staging[("staging")]
         Marts[("marts")]
-        BQML{{"BigQuery ML\nARIMA_PLUS forecast"}}
+        Forecast{{"Prophet/statsmodels\nforecast (MLflow)"}}
     end
 
-    subgraph Orchestration["Cloud Composer (Airflow)"]
+    subgraph Orchestration["Airflow (self-hosted, Docker)"]
         DAGs["Batch load /\nstaging+marts /\nDQ checks /\nretraining DAGs"]
     end
 
     subgraph Serving["Serving"]
-        API["FastAPI\non GKE Autopilot"]
+        API["FastAPI\non Azure Container Apps"]
     end
 
-    TLC --> Replayer --> PubSub --> Dataflow
-    Dataflow -. invalid messages .-> DLQ
-    Dataflow --> Raw --> Staging --> Marts
-    Marts --> BQML
+    TLC --> Replayer --> EventHub --> Databricks
+    Databricks --> Raw --> Staging --> Marts
+    Marts --> Forecast
     DAGs -. orchestrates .-> Raw
     DAGs -. orchestrates .-> Staging
     DAGs -. orchestrates .-> Marts
-    DAGs -. schedules retrain .-> BQML
+    DAGs -. schedules retrain .-> Forecast
     Marts --> API
-    BQML --> API
-    Dataflow -. real-time aggregates .-> API
+    Forecast --> API
+    Databricks -. real-time aggregates .-> API
 ```
 
 ## Tech stack
 
 | Layer               | Technology                                              |
 |---------------------|----------------------------------------------------------|
-| Event replay        | Python, `pyarrow`, `google-cloud-pubsub`                 |
-| Messaging           | Cloud Pub/Sub (local: Pub/Sub emulator)                  |
-| Stream processing   | Apache Beam (Python SDK), Cloud Dataflow / DirectRunner   |
-| Warehouse           | BigQuery (raw / staging / marts), BigQuery GIS, BigQuery ML |
-| Orchestration       | Cloud Composer / Apache Airflow (local: Docker Compose)  |
+| Event replay        | Python, `pyarrow`, `azure-eventhub`                       |
+| Messaging           | Azure Event Hubs (local: Event Hubs emulator)              |
+| Stream processing   | PySpark Structured Streaming, Databricks / local `pyspark` |
+| Warehouse           | Delta Lake on ADLS Gen2 (raw / staging / marts), Databricks SQL |
+| Orchestration       | Apache Airflow, self-hosted (Docker Compose, local and deployed) |
 | Serving API         | FastAPI, Uvicorn, Docker                                 |
-| Compute (API)       | GKE Autopilot, Artifact Registry                          |
-| Infrastructure      | Terraform                                                 |
-| CI/CD               | GitHub Actions, Workload Identity Federation              |
+| Compute (API)       | Azure Container Apps, Azure Container Registry              |
+| Infrastructure      | Terraform (`azurerm` provider)                             |
+| CI/CD               | GitHub Actions, Azure federated identity credentials (OIDC) |
 | Quality             | ruff, pytest, pre-commit                                   |
 
 ## Getting started
@@ -99,8 +105,8 @@ flowchart LR
 
 - Python 3.11+
 - [Make](https://www.gnu.org/software/make/)
-- A GCP project (for later phases) — no cloud resources are required for local
-  development
+- An Azure subscription (for later phases) — no cloud resources are required for
+  local development
 
 ### Local setup
 
@@ -119,39 +125,34 @@ make lint          # ruff checks
 make format        # auto-fix + format
 make test           # run pytest suite
 make sample-data    # download a small local sample of NYC TLC trip data
-make destroy        # destroy all GCP resources provisioned via Terraform
+make destroy        # destroy all Azure resources provisioned via Terraform
 ```
 
 ### Running the streaming stack locally
 
-No GCP project is needed for this - everything runs against a local Pub/Sub
-emulator (Docker) and Apache Beam's DirectRunner.
-
-```bash
-make sample-data                          # download a small TLC sample into data/sample/
-make emulator-up                          # start the local Pub/Sub emulator
-make emulator-setup                       # create the taxi-trips topic/subscription
-make pipeline-local                       # start the Beam pipeline (DirectRunner), in one terminal
-make replay SAMPLE=data/sample/yellow_tripdata_2024-01_sample.parquet ARGS="--speedup 600"
-                                           # replay the sample into Pub/Sub, in another terminal
-make emulator-down                        # stop the emulator when done
-```
-
-Zone aggregates and dead-lettered messages are written as JSON Lines under
-`output/`.
+No Azure subscription is needed for this - everything runs against a local Event
+Hubs emulator (Docker) and a local PySpark session. Exact commands will be filled
+in here as the Azure pipeline (`pipeline/`) and emulator setup land - see the
+[Roadmap](#roadmap).
 
 ## Roadmap
 
 - [x] **Phase 0** — Monorepo scaffolding, `CLAUDE.md`, README, Makefile, `pyproject.toml`,
       pre-commit hooks, TLC sample downloader, minimal CI (lint + tests).
-- [x] **Phase 1** — Replayer, local Pub/Sub emulator, Apache Beam pipeline on
-      DirectRunner (parsing, dead-letter, dedup, watermarks/allowed lateness/
-      triggers, sliding-window aggregates, spike detection), with tests.
-- [ ] **Phase 2** — Base Terraform, Pub/Sub / BigQuery / Dataflow deployed on GCP.
-- [ ] **Phase 3** — BigQuery raw/staging/marts, BigQuery GIS, BigQuery ML forecasting
-      model, local Airflow DAGs, short Composer deployment.
-- [ ] **Phase 4** — FastAPI service, Docker, GKE Autopilot deployment.
-- [ ] **Phase 5** — Full CI/CD, Workload Identity Federation.
+- [x] **Phase 1 (GCP/Beam, archived)** — Replayer, local Pub/Sub emulator, Apache
+      Beam pipeline on DirectRunner (parsing, dead-letter, dedup, watermarks/
+      allowed lateness/triggers, sliding-window aggregates, spike detection), with
+      tests. Fully built and live-tested; preserved on
+      [`archive/gcp-beam`](https://github.com/sanogomamadou/TaxiPulse/tree/archive/gcp-beam).
+- [ ] **Phase 2 (Azure pivot, active)** — Replayer rewritten for Event Hubs, stream
+      processing rebuilt in PySpark Structured Streaming on Databricks, local
+      Event Hubs emulator, Terraform for Event Hubs / ADLS Gen2 / Databricks /
+      identities.
+- [ ] **Phase 3** — Delta Lake raw/staging/marts (Lakehouse), forecasting model
+      (Prophet/statsmodels on Databricks, MLflow-tracked), local Airflow DAGs,
+      short Databricks deployment.
+- [ ] **Phase 4** — FastAPI service, Docker, Azure Container Apps deployment.
+- [ ] **Phase 5** — Full CI/CD, Azure federated identity credentials (OIDC).
 - [ ] **Phase 6** — Performance, model quality, and cost measurements; README
       finalization.
 
