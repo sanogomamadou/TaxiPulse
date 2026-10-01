@@ -128,12 +128,20 @@ make sample-data    # download a small local sample of NYC TLC trip data
 make destroy        # destroy all Azure resources provisioned via Terraform
 ```
 
-### Running the streaming stack locally
+### Running the replayer locally
 
-No Azure subscription is needed for this - everything runs against a local Event
-Hubs emulator (Docker) and a local PySpark session. Exact commands will be filled
-in here as the Azure pipeline (`pipeline/`) and emulator setup land - see the
-[Roadmap](#roadmap).
+No Azure subscription is needed for this - the replayer runs against a local
+Event Hubs emulator (Docker, official `azure-messaging/eventhubs-emulator` image +
+Azurite). The streaming pipeline (PySpark/Databricks) is still being rebuilt for
+Azure - see the [Roadmap](#roadmap).
+
+```bash
+make sample-data   # download a small TLC sample into data/sample/
+make emulator-up    # start the local Event Hubs emulator + Azurite
+make emulator-setup  # verify the emulator is reachable and the taxi-trips hub exists
+make replay SAMPLE=data/sample/yellow_tripdata_2024-01_sample.parquet ARGS="--speedup 50000"
+make emulator-down   # stop the emulator when done
+```
 
 ## Roadmap
 

@@ -70,7 +70,10 @@ def run(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    # WARNING at the root so the Event Hubs SDK's very verbose AMQP
+    # connection/link state transitions don't drown out our own progress logs.
+    logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(message)s")
+    logger.setLevel(logging.INFO)
     run(parse_args(argv))
     return 0
 
