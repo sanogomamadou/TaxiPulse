@@ -48,6 +48,19 @@ from taxipulse_pipeline.transforms.windowing import (
 logger = logging.getLogger(__name__)
 
 
+class FormatDeadLetterForBigQuery(beam.DoFn):
+    """Matches io.bigquery_io.DEAD_LETTER_SCHEMA exactly - all three fields
+    are REQUIRED there, so every one must be populated here."""
+
+    def process(self, element: tuple[bytes, str], timestamp=beam.DoFn.TimestampParam):
+        raw, error = element
+        yield {
+            "raw_payload": raw.decode("utf-8", errors="replace"),
+            "error_message": error,
+            "processing_time": timestamp.to_utc_datetime().isoformat(),
+        }
+
+
 def load_historical_avg_by_zone(path: str | None) -> dict[int, float]:
     if not path:
         return {}
@@ -91,9 +104,7 @@ def build_pipeline(pipeline: beam.Pipeline, options: TaxiPulseOptions) -> None:
             raise ValueError("--output_table is required when --output_sink=bigquery")
         write_zone_aggregates_to_bigquery(enriched, opts.output_table)
 
-        dead_letter_records = dead_letters | "FormatDeadLetters" >> beam.Map(
-            lambda pair: {"raw_payload": pair[0].decode("utf-8", errors="replace"), "error_message": pair[1]}
-        )
+        dead_letter_records = dead_letters | "FormatDeadLetters" >> beam.ParDo(FormatDeadLetterForBigQuery())
         if opts.dead_letter_output:
             write_dead_letters_to_bigquery(dead_letter_records, opts.dead_letter_output)
     else:
