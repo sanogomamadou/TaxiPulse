@@ -17,5 +17,9 @@ services:
       METADATA_SERVER: azurite
     ports:
       - "5672:5672"
+      # 9092 (Kafka-compatible) is exposed by the image but not published here:
+      # the pipeline's spark-sql-kafka connector couldn't reach it from the
+      # host in local testing - see pipeline/src/taxipulse_pipeline/main.py's
+      # docstring and CLAUDE.md.
     volumes:
       - ./infra/local/eventhubs-emulator-config.json:/Eventhubs_Emulator/ConfigFiles/Config.json

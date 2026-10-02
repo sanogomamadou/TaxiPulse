@@ -107,6 +107,11 @@ flowchart LR
 - [Make](https://www.gnu.org/software/make/)
 - An Azure subscription (for later phases) — no cloud resources are required for
   local development
+- To run the Spark pipeline (`pipeline/`) locally: a **Java 17+ JDK** (Spark 4.x
+  requires it - set `JAVA_HOME` accordingly) and, **on Windows only**,
+  [`winutils.exe` and `hadoop.dll`](https://github.com/cdarlint/winutils) on a
+  `HADOOP_HOME/bin` directory that's also on `PATH` (Spark's Hadoop filesystem
+  layer needs them even for purely local file paths)
 
 ### Local setup
 
@@ -132,8 +137,7 @@ make destroy        # destroy all Azure resources provisioned via Terraform
 
 No Azure subscription is needed for this - the replayer runs against a local
 Event Hubs emulator (Docker, official `azure-messaging/eventhubs-emulator` image +
-Azurite). The streaming pipeline (PySpark/Databricks) is still being rebuilt for
-Azure - see the [Roadmap](#roadmap).
+Azurite).
 
 ```bash
 make sample-data   # download a small TLC sample into data/sample/
@@ -141,6 +145,26 @@ make emulator-up    # start the local Event Hubs emulator + Azurite
 make emulator-setup  # verify the emulator is reachable and the taxi-trips hub exists
 make replay SAMPLE=data/sample/yellow_tripdata_2024-01_sample.parquet ARGS="--speedup 50000"
 make emulator-down   # stop the emulator when done
+```
+
+### Running the Spark pipeline locally
+
+`pipeline/` is a standard `spark-sql-kafka-0-10` reader against Event Hubs'
+Kafka-compatible endpoint - the idiomatic way to consume Event Hubs from Spark
+(the dedicated `azure-eventhubs-spark` connector is unmaintained and
+incompatible with Spark 4.x). This works against real Azure Event Hubs; the
+local emulator's Kafka port could not be made reachable from the host in
+testing (see `pipeline/src/taxipulse_pipeline/main.py`'s docstring). The
+pipeline's logic is still fully verified locally - both via unit tests
+(`pipeline/tests/`, batch DataFrames) and a live Structured Streaming run
+against a local file source standing in for the Kafka read step.
+
+```bash
+python -m taxipulse_pipeline.main \
+    --bootstrap-servers <namespace>.servicebus.windows.net:9093 \
+    --connection-string "$AZURE_EVENTHUB_CONNECTION_STRING" \
+    --eventhub-name taxi-trips \
+    --output-path output/zone_aggregates --dead-letter-path output/dead_letters
 ```
 
 ## Roadmap
@@ -152,10 +176,13 @@ make emulator-down   # stop the emulator when done
       allowed lateness/triggers, sliding-window aggregates, spike detection), with
       tests. Fully built and live-tested; preserved on
       [`archive/gcp-beam`](https://github.com/sanogomamadou/TaxiPulse/tree/archive/gcp-beam).
-- [ ] **Phase 2 (Azure pivot, active)** — Replayer rewritten for Event Hubs, stream
-      processing rebuilt in PySpark Structured Streaming on Databricks, local
-      Event Hubs emulator, Terraform for Event Hubs / ADLS Gen2 / Databricks /
-      identities.
+- [ ] **Phase 2 (Azure pivot, active)** — Replayer rewritten for Event Hubs, local
+      Event Hubs emulator, stream processing rebuilt in PySpark Structured
+      Streaming (parsing/dead-letter, watermark, dedup, sliding-window
+      aggregates, spike detection, Delta Lake sink), verified locally with
+      unit tests and a live Structured Streaming run. Still to do: Terraform
+      for Event Hubs / ADLS Gen2 / Databricks / identities, and a real Azure
+      deployment.
 - [ ] **Phase 3** — Delta Lake raw/staging/marts (Lakehouse), forecasting model
       (Prophet/statsmodels on Databricks, MLflow-tracked), local Airflow DAGs,
       short Databricks deployment.
