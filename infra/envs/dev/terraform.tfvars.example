@@ -1,0 +1,4 @@
+# Copy to terraform.tfvars (gitignored) and fill in real values.
+subscription_id = "<your-azure-subscription-id>"
+location        = "westeurope"
+name_prefix     = "taxipulse-mds"

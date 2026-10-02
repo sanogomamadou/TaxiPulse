@@ -1,0 +1,27 @@
+output "resource_group_name" {
+  value = module.resource_group.name
+}
+
+output "eventhub_namespace_name" {
+  value = module.event_hubs.namespace_name
+}
+
+output "eventhub_kafka_bootstrap_servers" {
+  value = module.event_hubs.kafka_bootstrap_servers
+}
+
+output "storage_account_name" {
+  value = module.storage.storage_account_name
+}
+
+output "databricks_workspace_url" {
+  value = module.databricks.workspace_url
+}
+
+output "databricks_job_identity_client_id" {
+  value = module.identities.databricks_job_identity_client_id
+}
+
+output "replayer_identity_client_id" {
+  value = module.identities.replayer_identity_client_id
+}
