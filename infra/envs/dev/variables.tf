@@ -4,9 +4,9 @@ variable "subscription_id" {
 }
 
 variable "location" {
-  description = "Primary Azure region for all resources"
+  description = "Primary Azure region for all resources. Must be one this subscription's 'Allowed resource deployment regions' policy permits - check with `az policy assignment list` before changing (Azure for Students subscriptions are commonly restricted to a handful of regions, e.g. francecentral, germanywestcentral, swedencentral, switzerlandnorth, polandcentral - NOT westeurope, discovered the hard way via a 403 RequestDisallowedByAzure)."
   type        = string
-  default     = "westeurope"
+  default     = "francecentral"
 }
 
 variable "name_prefix" {
