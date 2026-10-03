@@ -18,6 +18,9 @@ dependencies = [
   "uvicorn[standard]>=0.30",
   "pydantic>=2.7",
   "python-dotenv>=1.0",
+  "geopandas>=1.0",
+  "prophet>=1.1",
+  "mlflow>=2.14",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +42,7 @@ src = [
   "common/src",
   "replayer/src",
   "pipeline/src",
+  "warehouse/src",
   "api/src",
   "scripts",
   "orchestration/dags",
@@ -50,14 +54,15 @@ select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["taxipulse_common", "taxipulse_replayer", "taxipulse_pipeline", "taxipulse_api"]
+known-first-party = ["taxipulse_common", "taxipulse_replayer", "taxipulse_pipeline", "taxipulse_warehouse", "taxipulse_api"]
 
 [tool.pytest.ini_options]
-testpaths = ["common/tests", "replayer/tests", "pipeline/tests", "api/tests", "orchestration/tests"]
+testpaths = ["common/tests", "replayer/tests", "pipeline/tests", "warehouse/tests", "api/tests", "orchestration/tests"]
 pythonpath = [
   "common/src",
   "replayer/src",
   "pipeline/src",
+  "warehouse/src",
   "api/src",
 ]
 addopts = "-ra -q"
