@@ -1,4 +1,10 @@
-.PHONY: help install lint format test test-cov sample-data emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy
+.PHONY: help install lint format test test-cov sample-data taxi-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy
+
+# No component under */src is pip-installed (see pyproject.toml's
+# [tool.setuptools] comment) - pytest resolves them via its own
+# `pythonpath` ini option, but a plain `python -m taxipulse_x.y` outside
+# pytest needs this on the real PYTHONPATH, so every target gets it here.
+export PYTHONPATH := common/src:replayer/src:pipeline/src:warehouse/src:api/src
 
 help:
 	@echo "TaxiPulse - available targets:"
@@ -8,6 +14,12 @@ help:
 	@echo "  test             Run the pytest suite"
 	@echo "  test-cov         Run the pytest suite with coverage report"
 	@echo "  sample-data      Download a small local sample of NYC TLC trip data"
+	@echo "  taxi-zones       Download/build the zone lookup + centroid reference table"
+	@echo "  warehouse-batch-ingest  Ingest raw TLC sample Parquet into the raw Delta table"
+	@echo "  warehouse-staging       Build stg_trips from the raw Delta table"
+	@echo "  warehouse-marts         Build the zone_demand_hourly/daily marts"
+	@echo "  warehouse-quality       Run data quality checks against staging/marts"
+	@echo "  warehouse-forecast      Train+forecast per-zone demand (Prophet/MLflow)"
 	@echo "  emulator-up      Start the local Event Hubs emulator + Azurite (Docker)"
 	@echo "  emulator-down    Stop the local emulator"
 	@echo "  emulator-setup   Verify the emulator is reachable and the hub exists"
@@ -40,6 +52,24 @@ test-cov:
 
 sample-data:
 	python scripts/download_tlc_sample.py --year-month 2024-01 --sample-size 5000
+
+taxi-zones:
+	python scripts/download_taxi_zones.py
+
+warehouse-batch-ingest:
+	python -m taxipulse_warehouse.batch_ingest $(ARGS)
+
+warehouse-staging:
+	python -m taxipulse_warehouse.staging $(ARGS)
+
+warehouse-marts:
+	python -m taxipulse_warehouse.marts $(ARGS)
+
+warehouse-quality:
+	python -m taxipulse_warehouse.quality $(ARGS)
+
+warehouse-forecast:
+	python -m taxipulse_warehouse.forecast $(ARGS)
 
 EMULATOR_CONNECTION_STRING := Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
 

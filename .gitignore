@@ -57,6 +57,11 @@ Thumbs.db
 
 # --- Local pipeline run output ---
 output/
+warehouse_output/
+
+# --- Local MLflow tracking ---
+mlflow.db
+mlruns/
 
 # --- Misc ---
 *.log
