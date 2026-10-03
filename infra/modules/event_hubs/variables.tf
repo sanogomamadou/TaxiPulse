@@ -17,9 +17,9 @@ variable "eventhub_name" {
 }
 
 variable "sku" {
-  description = "Basic is the cheapest tier and is sufficient here: this project only ever needs the $Default consumer group (Basic supports it; Standard, which costs more, is only needed for multiple custom consumer groups)."
+  description = "Must be Standard or higher: the Kafka-compatible protocol (which the pipeline's spark-sql-kafka-0-10 reader depends on) is only available on Standard/Premium/Dedicated - Basic rejects it outright with a SaslAuthenticationException, confirmed against the real service (Basic was the original, cheaper choice, picked before anyone had tried an actual Kafka connection against it)."
   type        = string
-  default     = "Basic"
+  default     = "Standard"
 }
 
 variable "partition_count" {

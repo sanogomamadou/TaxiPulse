@@ -14,5 +14,5 @@ resource "azurerm_eventhub" "trips" {
   name              = var.eventhub_name
   namespace_id      = azurerm_eventhub_namespace.this.id
   partition_count   = var.partition_count
-  message_retention = 1 # day - Basic tier's maximum, and plenty for a demo/replay workload
+  message_retention = 1 # day - plenty for a demo/replay workload (Standard tier allows up to 7)
 }
