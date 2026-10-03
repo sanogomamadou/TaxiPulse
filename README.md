@@ -176,15 +176,18 @@ python -m taxipulse_pipeline.main \
       allowed lateness/triggers, sliding-window aggregates, spike detection), with
       tests. Fully built and live-tested; preserved on
       [`archive/gcp-beam`](https://github.com/sanogomamadou/TaxiPulse/tree/archive/gcp-beam).
-- [x] **Phase 2 (Azure pivot) — code complete and deployed to real Azure** —
+- [x] **Phase 2 (Azure pivot) — complete, verified end-to-end against real Azure** —
       Replayer rewritten for Event Hubs, local Event Hubs emulator, stream
       processing rebuilt in PySpark Structured Streaming (parsing/dead-letter,
       watermark, dedup, sliding-window aggregates, spike detection, Delta
       Lake sink), Terraform for Event Hubs / ADLS Gen2 / Databricks /
-      least-privilege identities - verified locally (unit tests, a live
-      Structured Streaming run, `terraform validate`) and deployed for real
-      against an Azure for Students subscription. Still to do: a live
-      end-to-end run against the deployed service, then measure real numbers.
+      least-privilege identities. Verified locally (unit tests, a live
+      Structured Streaming run) and deployed for real against an Azure for
+      Students subscription: the replayer published real events to real
+      Event Hubs, and the pipeline connected via Kafka protocol and ran
+      error-free (after fixing an Event Hubs tier gap - Basic doesn't
+      support Kafka, only Standard+). Infrastructure was torn down
+      afterward (`terraform destroy`, confirmed clean) to control cost.
 - [ ] **Phase 3** — Delta Lake raw/staging/marts (Lakehouse), forecasting model
       (Prophet/statsmodels on Databricks, MLflow-tracked), local Airflow DAGs,
       short Databricks deployment.
