@@ -47,7 +47,7 @@ src = [
   "scripts",
   "orchestration/dags",
 ]
-exclude = ["data", ".venv", "infra"]
+exclude = ["data", ".venv", ".venv-airflow", "infra"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4"]

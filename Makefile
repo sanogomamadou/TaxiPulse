@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-cov sample-data taxi-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy
+.PHONY: help install lint format test test-cov sample-data taxi-zones warehouse-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy
 
 # No component under */src is pip-installed (see pyproject.toml's
 # [tool.setuptools] comment) - pytest resolves them via its own
@@ -15,6 +15,7 @@ help:
 	@echo "  test-cov         Run the pytest suite with coverage report"
 	@echo "  sample-data      Download a small local sample of NYC TLC trip data"
 	@echo "  taxi-zones       Download/build the zone lookup + centroid reference table"
+	@echo "  warehouse-zones         Load the zone reference into stg_taxi_zones"
 	@echo "  warehouse-batch-ingest  Ingest raw TLC sample Parquet into the raw Delta table"
 	@echo "  warehouse-staging       Build stg_trips from the raw Delta table"
 	@echo "  warehouse-marts         Build the zone_demand_hourly/daily marts"
@@ -55,6 +56,9 @@ sample-data:
 
 taxi-zones:
 	python scripts/download_taxi_zones.py
+
+warehouse-zones:
+	python -m taxipulse_warehouse.zones $(ARGS)
 
 warehouse-batch-ingest:
 	python -m taxipulse_warehouse.batch_ingest $(ARGS)
