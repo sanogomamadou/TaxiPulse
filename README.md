@@ -167,6 +167,28 @@ python -m taxipulse_pipeline.main \
     --output-path output/zone_aggregates --dead-letter-path output/dead_letters
 ```
 
+### Running the warehouse pipeline locally
+
+No Azure subscription needed - everything reads/writes local Delta tables
+under `warehouse_output/`.
+
+```bash
+make sample-data   # download a small TLC sample into data/sample/
+make taxi-zones     # download the TLC zone lookup + shapefile, build the centroid reference
+make warehouse-zones        # load the zone reference into stg_taxi_zones
+make warehouse-batch-ingest ARGS="data/sample/yellow_tripdata_2024-01_sample.parquet"
+make warehouse-staging
+make warehouse-marts
+make warehouse-quality       # exits non-zero if any check fails
+make warehouse-forecast
+```
+
+Airflow DAGs for this pipeline live in `orchestration/dags/` - each task
+shells out to the same CLI modules above. `apache-airflow` is an optional
+extra (`pip install -e ".[airflow]"`, best kept in its own virtual
+environment - its pinned dependencies conflict with `mlflow`'s in the same
+environment).
+
 ## Roadmap
 
 - [x] **Phase 0** — Monorepo scaffolding, `CLAUDE.md`, README, Makefile, `pyproject.toml`,
@@ -188,9 +210,16 @@ python -m taxipulse_pipeline.main \
       error-free (after fixing an Event Hubs tier gap - Basic doesn't
       support Kafka, only Standard+). Infrastructure was torn down
       afterward (`terraform destroy`, confirmed clean) to control cost.
-- [ ] **Phase 3** — Delta Lake raw/staging/marts (Lakehouse), forecasting model
-      (Prophet/statsmodels on Databricks, MLflow-tracked), local Airflow DAGs,
-      short Databricks deployment.
+- [x] **Phase 3 (local build) — code-complete, verified end-to-end on a real
+      TLC sample** — Delta Lake raw/staging/marts, a zone geographic
+      reference (TLC zone lookup + centroids), per-zone demand forecasting
+      (Prophet via a Spark grouped UDF, MLflow-tracked), lightweight data
+      quality checks, and two Airflow DAGs (daily batch load + weekly
+      forecast retrain). Ran the full chain locally end-to-end: 2,968 trips
+      ingested → staged → 2,727 hourly / 1,187 daily zone-demand rows → all
+      5 quality checks passed → 10 zones forecast (avg MAE 0.28, avg MAPE
+      22.4%). A short real Databricks deployment is deferred to the next
+      live-cloud session.
 - [ ] **Phase 4** — FastAPI service, Docker, Azure Container Apps deployment.
 - [ ] **Phase 5** — Full CI/CD, Azure federated identity credentials (OIDC).
 - [ ] **Phase 6** — Performance, model quality, and cost measurements; README
