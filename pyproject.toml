@@ -32,7 +32,13 @@ dev = [
   "httpx>=0.27",
 ]
 airflow = [
-  "apache-airflow>=2.9",
+  # Pinned exactly (not >=) - apache-airflow's own constraints file is
+  # version-specific, and resolving against an unpinned range makes pip
+  # consider newer Airflow versions whose constraints conflict with this
+  # one's. Install with:
+  #   pip install -e ".[airflow]" --constraint \
+  #     https://raw.githubusercontent.com/apache/airflow/constraints-2.9.3/constraints-3.11.txt
+  "apache-airflow==2.9.3",
 ]
 
 [tool.ruff]
