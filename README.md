@@ -200,6 +200,22 @@ docker compose exec airflow-scheduler airflow dags trigger taxipulse_batch_pipel
 docker compose down
 ```
 
+### Running the API locally
+
+Serves the warehouse marts and the pipeline's live spike detection over
+HTTP - reads Delta tables directly via `deltalake` (delta-rs), not
+pyspark, so it starts in under a second and needs no JVM.
+
+```bash
+# Option A: plain uvicorn, against the main venv
+make api-dev
+# Option B: the actual container image (what would ship to Container Apps)
+make api-build
+make api-run
+# http://localhost:8000/docs for interactive OpenAPI docs
+curl http://localhost:8000/zones/top?limit=5
+```
+
 ## Roadmap
 
 - [x] **Phase 0** — Monorepo scaffolding, `CLAUDE.md`, README, Makefile, `pyproject.toml`,
@@ -237,7 +253,17 @@ docker compose down
       the same file read from a container mount double-counted every trip)
       that a single-environment run could never have exposed. A short real
       Databricks deployment is deferred to the next live-cloud session.
-- [ ] **Phase 4** — FastAPI service, Docker, Azure Container Apps deployment.
+- [x] **Phase 4 (local build) — code-complete, verified end-to-end against
+      real data in a real container** — FastAPI service serving per-zone
+      KPIs, demand history, forecasts, and live spike detection, reading
+      Delta tables directly via `deltalake` (no JVM/Spark needed to serve
+      already-computed results). Built and ran the actual Docker image
+      (875MB - fastapi/uvicorn/pydantic/deltalake/pandas only, vs. 4.36GB
+      for the warehouse's Airflow image, which genuinely needs pyspark +
+      Java) against the real warehouse output: all
+      265 zones, real demand/forecast numbers, correct 404s and empty
+      results where expected. Azure Container Apps deployment is the next
+      live-cloud step.
 - [ ] **Phase 5** — Full CI/CD, Azure federated identity credentials (OIDC).
 - [ ] **Phase 6** — Performance, model quality, and cost measurements; README
       finalization.
