@@ -21,6 +21,10 @@ dependencies = [
   "geopandas>=1.0",
   "prophet>=1.1",
   "mlflow>=2.14",
+  # delta-rs bindings, not pyspark/delta-spark - the API reads already-
+  # materialized Delta tables and shouldn't spin up a JVM/Spark session
+  # per request just to serve them.
+  "deltalake[pyarrow]>=0.18",
 ]
 
 [project.optional-dependencies]
