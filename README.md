@@ -185,9 +185,20 @@ make warehouse-forecast
 
 Airflow DAGs for this pipeline live in `orchestration/dags/` - each task
 shells out to the same CLI modules above. `apache-airflow` is an optional
-extra (`pip install -e ".[airflow]"`, best kept in its own virtual
-environment - its pinned dependencies conflict with `mlflow`'s in the same
-environment).
+extra (`pip install -e ".[airflow]"`, pinned to an exact version to match
+its own constraints file). A full local deployment (Postgres +
+LocalExecutor scheduler/webserver, Java + the warehouse's Python deps
+baked into the image) is in `orchestration/Dockerfile` +
+`orchestration/docker-compose.yml`:
+
+```bash
+cd orchestration
+docker compose up -d
+docker compose exec airflow-scheduler airflow dags unpause taxipulse_batch_pipeline
+docker compose exec airflow-scheduler airflow dags trigger taxipulse_batch_pipeline
+# Airflow UI: http://localhost:8080 (admin/admin, local dev only)
+docker compose down
+```
 
 ## Roadmap
 
@@ -210,16 +221,22 @@ environment).
       error-free (after fixing an Event Hubs tier gap - Basic doesn't
       support Kafka, only Standard+). Infrastructure was torn down
       afterward (`terraform destroy`, confirmed clean) to control cost.
-- [x] **Phase 3 (local build) — code-complete, verified end-to-end on a real
-      TLC sample** — Delta Lake raw/staging/marts, a zone geographic
-      reference (TLC zone lookup + centroids), per-zone demand forecasting
-      (Prophet via a Spark grouped UDF, MLflow-tracked), lightweight data
-      quality checks, and two Airflow DAGs (daily batch load + weekly
-      forecast retrain). Ran the full chain locally end-to-end: 2,968 trips
-      ingested → staged → 2,727 hourly / 1,187 daily zone-demand rows → all
-      5 quality checks passed → 10 zones forecast (avg MAE 0.28, avg MAPE
-      22.4%). A short real Databricks deployment is deferred to the next
-      live-cloud session.
+- [x] **Phase 3 (local build) — code-complete, verified end-to-end against
+      a real local Airflow deployment** — Delta Lake raw/staging/marts, a
+      zone geographic reference (TLC zone lookup + centroids), per-zone
+      demand forecasting (Prophet via a Spark grouped UDF, MLflow-tracked),
+      lightweight data quality checks, and two Airflow DAGs (daily batch
+      load + weekly forecast retrain). Ran the full chain twice: once
+      directly on the host, and once for real through a Dockerized Airflow
+      (Postgres + LocalExecutor scheduler/webserver, both DAGs triggered
+      and run to completion) - 2,968 trips ingested → staged → 2,727 hourly
+      / 1,187 daily zone-demand rows → all 5 quality checks passed → 10
+      zones forecast (avg MAE 0.28, avg MAPE 22.4%). Running it through a
+      second, genuinely different environment caught a real idempotency
+      bug (the trip ID hash included the source file's absolute path, so
+      the same file read from a container mount double-counted every trip)
+      that a single-environment run could never have exposed. A short real
+      Databricks deployment is deferred to the next live-cloud session.
 - [ ] **Phase 4** — FastAPI service, Docker, Azure Container Apps deployment.
 - [ ] **Phase 5** — Full CI/CD, Azure federated identity credentials (OIDC).
 - [ ] **Phase 6** — Performance, model quality, and cost measurements; README
