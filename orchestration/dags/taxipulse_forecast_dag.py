@@ -19,6 +19,7 @@ from datetime import datetime
 from airflow.models.dag import DAG
 from airflow.operators.bash import BashOperator
 
+PROJECT_ROOT = "{{ var.value.get('taxipulse_project_root', '.') }}"
 WAREHOUSE_OUTPUT = "{{ var.value.get('taxipulse_warehouse_output', 'warehouse_output') }}"
 TOP_N_ZONES = "{{ var.value.get('taxipulse_forecast_top_n_zones', '10') }}"
 
@@ -44,4 +45,5 @@ with DAG(
             f"--output-path {WAREHOUSE_OUTPUT}/marts/demand_forecast "
             f"--top-n-zones {TOP_N_ZONES}"
         ),
+        cwd=PROJECT_ROOT,
     )
