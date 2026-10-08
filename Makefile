@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-cov sample-data taxi-zones warehouse-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy
+.PHONY: help install lint format test test-cov sample-data taxi-zones warehouse-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast api-dev api-build api-run emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy
 
 # No component under */src is pip-installed (see pyproject.toml's
 # [tool.setuptools] comment) - pytest resolves them via its own
@@ -21,6 +21,9 @@ help:
 	@echo "  warehouse-marts         Build the zone_demand_hourly/daily marts"
 	@echo "  warehouse-quality       Run data quality checks against staging/marts"
 	@echo "  warehouse-forecast      Train+forecast per-zone demand (Prophet/MLflow)"
+	@echo "  api-dev          Run the API locally with uvicorn --reload"
+	@echo "  api-build        Build the API's Docker image (api/Dockerfile)"
+	@echo "  api-run          Run the API container against local warehouse_output/"
 	@echo "  emulator-up      Start the local Event Hubs emulator + Azurite (Docker)"
 	@echo "  emulator-down    Stop the local emulator"
 	@echo "  emulator-setup   Verify the emulator is reachable and the hub exists"
@@ -74,6 +77,23 @@ warehouse-quality:
 
 warehouse-forecast:
 	python -m taxipulse_warehouse.forecast $(ARGS)
+
+api-dev:
+	uvicorn taxipulse_api.main:app --reload --app-dir api/src
+
+api-build:
+	docker build -t taxipulse-api:local api/
+
+# Runs the built image against the local warehouse_output/ and output/
+# directories (read-only mounts) - the exact same data the host-side
+# CLI commands above produce.
+api-run:
+	docker run --rm -p 8000:8000 \
+		-v "$(CURDIR)/warehouse_output:/data/warehouse_output:ro" \
+		-v "$(CURDIR)/output:/data/output:ro" \
+		-e TAXIPULSE_WAREHOUSE_OUTPUT=/data/warehouse_output \
+		-e TAXIPULSE_PIPELINE_OUTPUT=/data/output \
+		taxipulse-api:local
 
 EMULATOR_CONNECTION_STRING := Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
 
