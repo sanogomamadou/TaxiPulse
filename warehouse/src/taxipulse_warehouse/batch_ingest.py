@@ -90,13 +90,18 @@ def validate_trips(df: DataFrame) -> DataFrame:
 # TLC source data has no natural unique trip identifier. A random UUID per
 # row would make re-running batch ingestion on the same file non-idempotent
 # (every retry/backfill would mint "new" trips). Hashing each row's own
-# attributes - plus the source file path, so two genuinely different files
-# can't collide - gives a stable ID: re-ingesting the same file produces the
-# same trip_ids every time, so a downstream dedup by trip_id (see
-# staging.py) correctly collapses re-runs. Known limitation: two distinct
-# real trips from the same zone pair starting the same second with
-# identical distance/fare would hash identically and collapse into one -
-# accepted as rare enough to not warrant a heavier key.
+# attributes gives a stable ID: re-ingesting the same logical data produces
+# the same trip_ids every time, so a downstream dedup by trip_id (see
+# staging.py) correctly collapses re-runs - deliberately *not* including
+# the source file path in the hash (tried that first; it breaks the exact
+# idempotency guarantee this is meant to provide, since the same file read
+# from two different absolute paths - e.g. a host path vs. a container
+# mount path for the same underlying file - would then hash differently
+# and double-count on re-ingestion, caught by a real Airflow-in-Docker
+# run producing exactly 2x the expected row count). Known limitation:
+# two distinct real trips from the same zone pair starting the same second
+# with identical distance/fare would hash identically and collapse into
+# one - accepted as rare enough to not warrant a heavier key.
 TRIP_ID_KEY_COLUMNS = (
     "pickup_datetime",
     "dropoff_datetime",
@@ -109,9 +114,7 @@ TRIP_ID_KEY_COLUMNS = (
 
 
 def with_deterministic_trip_id(df: DataFrame) -> DataFrame:
-    key_expr = F.concat_ws(
-        "||", F.input_file_name(), *[F.col(c).cast("string") for c in TRIP_ID_KEY_COLUMNS]
-    )
+    key_expr = F.concat_ws("||", *[F.col(c).cast("string") for c in TRIP_ID_KEY_COLUMNS])
     return df.withColumn("trip_id", F.sha2(key_expr, 256))
 
 
