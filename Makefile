@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-cov sample-data taxi-zones warehouse-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast api-dev api-build api-run emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy destroy-all
+.PHONY: help install lint format test test-cov measure sample-data taxi-zones warehouse-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast api-dev api-build api-run emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy destroy-all
 
 # No component under */src is pip-installed (see pyproject.toml's
 # [tool.setuptools] comment) - pytest resolves them via its own
@@ -13,6 +13,7 @@ help:
 	@echo "  format           Auto-fix lint issues and format code with ruff"
 	@echo "  test             Run the pytest suite"
 	@echo "  test-cov         Run the pytest suite with coverage report"
+	@echo "  measure          Run scripts/measure_performance.py (throughput/volume/accuracy/cost)"
 	@echo "  sample-data      Download a small local sample of NYC TLC trip data"
 	@echo "  taxi-zones       Download/build the zone lookup + centroid reference table"
 	@echo "  warehouse-zones         Load the zone reference into stg_taxi_zones"
@@ -54,6 +55,9 @@ test:
 
 test-cov:
 	pytest --cov=replayer/src --cov=pipeline/src --cov=api/src --cov-report=term-missing
+
+measure:
+	python scripts/measure_performance.py
 
 sample-data:
 	python scripts/download_tlc_sample.py --year-month 2024-01 --sample-size 5000
