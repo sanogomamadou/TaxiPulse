@@ -38,3 +38,26 @@ module "identities" {
   eventhub_namespace_id = module.event_hubs.namespace_id
   eventhub_name         = module.event_hubs.eventhub_name
 }
+
+module "container_registry" {
+  source = "../../modules/container_registry"
+
+  resource_group_name = module.resource_group.name
+  location            = var.location
+  registry_name       = replace("${var.name_prefix}acr", "-", "")
+}
+
+module "container_apps" {
+  source = "../../modules/container_apps"
+
+  resource_group_name             = module.resource_group.name
+  location                        = var.location
+  app_name                        = "${var.name_prefix}-api"
+  container_registry_id           = module.container_registry.id
+  container_registry_login_server = module.container_registry.login_server
+  container_image                 = "${module.container_registry.login_server}/taxipulse-api:${var.api_image_tag}"
+  warehouse_output_path           = "abfss://warehouse@${module.storage.storage_account_name}.dfs.core.windows.net"
+  pipeline_output_path            = "abfss://raw@${module.storage.storage_account_name}.dfs.core.windows.net"
+  storage_account_name            = module.storage.storage_account_name
+  storage_account_key             = module.storage.primary_access_key
+}

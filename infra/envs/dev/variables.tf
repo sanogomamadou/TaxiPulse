@@ -14,3 +14,9 @@ variable "name_prefix" {
   type        = string
   default     = "taxipulse-mds"
 }
+
+variable "api_image_tag" {
+  description = "Tag of the taxipulse-api image already pushed to the container registry (push it before applying the container_apps module - Terraform doesn't build/push images itself)"
+  type        = string
+  default     = "latest"
+}

@@ -25,3 +25,11 @@ output "databricks_job_identity_client_id" {
 output "replayer_identity_client_id" {
   value = module.identities.replayer_identity_client_id
 }
+
+output "container_registry_login_server" {
+  value = module.container_registry.login_server
+}
+
+output "api_fqdn" {
+  value = module.container_apps.fqdn
+}
