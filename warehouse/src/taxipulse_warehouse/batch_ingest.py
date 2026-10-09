@@ -71,19 +71,18 @@ def validate_trips(df: DataFrame) -> DataFrame:
     pipeline.transforms.parsing: non-negative amounts, dropoff >= pickup.
     Optional fields default the same way too (passenger_count=1,
     payment_type=0, tip_amount=0.0)."""
-    return df.withColumn(
-        "passenger_count", F.coalesce(F.col("passenger_count"), F.lit(1))
-    ).withColumn(
-        "payment_type", F.coalesce(F.col("payment_type"), F.lit(0))
-    ).withColumn(
-        "tip_amount", F.coalesce(F.col("tip_amount"), F.lit(0.0))
-    ).filter(
-        F.col("pickup_datetime").isNotNull()
-        & F.col("dropoff_datetime").isNotNull()
-        & (F.col("dropoff_datetime") >= F.col("pickup_datetime"))
-        & (F.col("trip_distance") >= 0)
-        & (F.col("fare_amount") >= 0)
-        & (F.col("total_amount") >= 0)
+    return (
+        df.withColumn("passenger_count", F.coalesce(F.col("passenger_count"), F.lit(1)))
+        .withColumn("payment_type", F.coalesce(F.col("payment_type"), F.lit(0)))
+        .withColumn("tip_amount", F.coalesce(F.col("tip_amount"), F.lit(0.0)))
+        .filter(
+            F.col("pickup_datetime").isNotNull()
+            & F.col("dropoff_datetime").isNotNull()
+            & (F.col("dropoff_datetime") >= F.col("pickup_datetime"))
+            & (F.col("trip_distance") >= 0)
+            & (F.col("fare_amount") >= 0)
+            & (F.col("total_amount") >= 0)
+        )
     )
 
 

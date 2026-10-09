@@ -77,8 +77,6 @@ def get_zone_demand(
 
 
 @router.get("/{location_id}/forecast", response_model=list[ZoneForecast])
-def get_zone_forecast(
-    location_id: int, limit: int = Query(default=24, ge=1, le=500)
-) -> list[dict]:
+def get_zone_forecast(location_id: int, limit: int = Query(default=24, ge=1, le=500)) -> list[dict]:
     settings = get_settings()
     return warehouse.get_zone_forecast(settings.demand_forecast_path, location_id, limit)

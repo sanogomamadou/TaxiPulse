@@ -74,7 +74,9 @@ def test_normalize_columns_raises_on_missing_source_column(spark):
 
 
 def test_validate_trips_filters_negative_fare(spark):
-    df = normalize_columns(spark.createDataFrame([make_raw_row(fare_amount=-5.0, total_amount=-5.0)], RAW_SCHEMA))
+    df = normalize_columns(
+        spark.createDataFrame([make_raw_row(fare_amount=-5.0, total_amount=-5.0)], RAW_SCHEMA)
+    )
 
     result = validate_trips(df)
 
@@ -139,9 +141,7 @@ def test_with_deterministic_trip_id_is_stable_across_runs(spark):
 def test_with_deterministic_trip_id_differs_for_different_trips(spark):
     df = validate_trips(
         normalize_columns(
-            spark.createDataFrame(
-                [make_raw_row(pu=100), make_raw_row(pu=200)], RAW_SCHEMA
-            )
+            spark.createDataFrame([make_raw_row(pu=100), make_raw_row(pu=200)], RAW_SCHEMA)
         )
     )
 

@@ -25,10 +25,17 @@ logger = logging.getLogger(__name__)
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sample_path", type=Path, help="Path to a TLC sample Parquet file")
-    parser.add_argument("--speedup", type=float, default=None, help="Override REPLAYER_SPEEDUP_FACTOR")
-    parser.add_argument("--late-ratio", type=float, default=None, help="Override REPLAYER_INJECT_LATE_RATIO")
     parser.add_argument(
-        "--duplicate-ratio", type=float, default=None, help="Override REPLAYER_INJECT_DUPLICATE_RATIO"
+        "--speedup", type=float, default=None, help="Override REPLAYER_SPEEDUP_FACTOR"
+    )
+    parser.add_argument(
+        "--late-ratio", type=float, default=None, help="Override REPLAYER_INJECT_LATE_RATIO"
+    )
+    parser.add_argument(
+        "--duplicate-ratio",
+        type=float,
+        default=None,
+        help="Override REPLAYER_INJECT_DUPLICATE_RATIO",
     )
     parser.add_argument("--limit", type=int, default=None, help="Only replay the first N trips")
     return parser.parse_args(argv)

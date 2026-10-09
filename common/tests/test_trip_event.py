@@ -44,7 +44,9 @@ def test_from_dict_missing_required_field_raises(missing_field):
 
 def test_from_dict_dropoff_before_pickup_raises():
     payload = {**VALID_PAYLOAD, "dropoff_datetime": "2024-01-01T07:00:00"}
-    with pytest.raises(TripEventValidationError, match="dropoff_datetime is before pickup_datetime"):
+    with pytest.raises(
+        TripEventValidationError, match="dropoff_datetime is before pickup_datetime"
+    ):
         TripEvent.from_dict(payload)
 
 

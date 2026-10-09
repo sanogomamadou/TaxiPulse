@@ -29,9 +29,7 @@ def test_train_and_forecast_produces_expected_schema_and_horizon(spark):
     rows = make_hourly_rows(100, 40, 20)
     df = spark.createDataFrame(rows, HOURLY_SCHEMA)
 
-    result = train_and_forecast(
-        df, top_n_zones=1, forecast_hours=5, holdout_hours=5
-    ).collect()
+    result = train_and_forecast(df, top_n_zones=1, forecast_hours=5, holdout_hours=5).collect()
 
     assert len(result) == 5
     assert all(row["pickup_location_id"] == "100" for row in result)

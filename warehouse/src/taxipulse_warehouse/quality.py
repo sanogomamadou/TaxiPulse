@@ -32,9 +32,7 @@ def check_not_empty(df: DataFrame, name: str) -> QualityCheckResult:
 
 
 def check_no_nulls(df: DataFrame, columns: list[str], name: str) -> QualityCheckResult:
-    row = df.select(
-        [F.sum(F.col(c).isNull().cast("int")).alias(c) for c in columns]
-    ).collect()[0]
+    row = df.select([F.sum(F.col(c).isNull().cast("int")).alias(c) for c in columns]).collect()[0]
     offending = {c: n for c, n in row.asDict().items() if n}
     return QualityCheckResult(name, not offending, str(offending) if offending else "no nulls")
 
@@ -101,9 +99,7 @@ def run(stg_trips_path: str, stg_taxi_zones_path: str, zone_demand_hourly_path: 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stg-trips-path", default="warehouse_output/staging/stg_trips")
-    parser.add_argument(
-        "--stg-taxi-zones-path", default="warehouse_output/staging/stg_taxi_zones"
-    )
+    parser.add_argument("--stg-taxi-zones-path", default="warehouse_output/staging/stg_taxi_zones")
     parser.add_argument(
         "--zone-demand-hourly-path", default="warehouse_output/marts/zone_demand_hourly"
     )

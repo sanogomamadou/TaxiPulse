@@ -70,9 +70,9 @@ def get_top_zones(demand_path: str, metric: str, limit: int) -> list[dict]:
     if df is None or df.empty:
         return []
     totals = (
-        df.groupby(
-            ["pickup_location_id", "borough", "zone_name"], as_index=False, dropna=False
-        )[metric]
+        df.groupby(["pickup_location_id", "borough", "zone_name"], as_index=False, dropna=False)[
+            metric
+        ]
         .sum()
         .sort_values(metric, ascending=False)
     )

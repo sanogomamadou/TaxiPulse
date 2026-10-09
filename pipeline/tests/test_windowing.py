@@ -43,13 +43,36 @@ def test_add_trip_metrics_handles_zero_duration(spark):
 
 def test_aggregate_by_zone_groups_by_zone_and_computes_metrics(spark):
     rows = [
-        make_row("a", pickup_offset_seconds=0, zone=100, total_amount=10.0, duration_seconds=600, trip_distance=2.0),
-        make_row("b", pickup_offset_seconds=30, zone=100, total_amount=20.0, duration_seconds=900, trip_distance=3.0),
-        make_row("c", pickup_offset_seconds=0, zone=200, total_amount=15.0, duration_seconds=300, trip_distance=1.0),
+        make_row(
+            "a",
+            pickup_offset_seconds=0,
+            zone=100,
+            total_amount=10.0,
+            duration_seconds=600,
+            trip_distance=2.0,
+        ),
+        make_row(
+            "b",
+            pickup_offset_seconds=30,
+            zone=100,
+            total_amount=20.0,
+            duration_seconds=900,
+            trip_distance=3.0,
+        ),
+        make_row(
+            "c",
+            pickup_offset_seconds=0,
+            zone=200,
+            total_amount=15.0,
+            duration_seconds=300,
+            trip_distance=1.0,
+        ),
     ]
     df = add_trip_metrics(spark.createDataFrame(rows, SCHEMA))
 
-    result = aggregate_by_zone(df, window_duration="60 minutes", slide_duration="60 minutes").collect()
+    result = aggregate_by_zone(
+        df, window_duration="60 minutes", slide_duration="60 minutes"
+    ).collect()
 
     by_zone = {row["pickup_location_id"]: row for row in result}
     assert by_zone[100]["trip_count"] == 2

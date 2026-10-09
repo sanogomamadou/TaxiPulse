@@ -33,9 +33,7 @@ def run(reference_path: str, output_path: str) -> None:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--reference-path", default="data/reference/taxi_zones.parquet"
-    )
+    parser.add_argument("--reference-path", default="data/reference/taxi_zones.parquet")
     parser.add_argument("--output-path", default="warehouse_output/staging/stg_taxi_zones")
     return parser.parse_args(argv)
 

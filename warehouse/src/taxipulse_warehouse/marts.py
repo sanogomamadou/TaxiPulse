@@ -42,11 +42,15 @@ def enrich_with_zone_dimension(zone_demand: DataFrame, stg_taxi_zones: DataFrame
     ).drop("location_id")
 
 
-def build_zone_demand_mart(stg_trips: DataFrame, stg_taxi_zones: DataFrame, bucket: str) -> DataFrame:
+def build_zone_demand_mart(
+    stg_trips: DataFrame, stg_taxi_zones: DataFrame, bucket: str
+) -> DataFrame:
     return enrich_with_zone_dimension(aggregate_zone_demand(stg_trips, bucket), stg_taxi_zones)
 
 
-def run(stg_trips_path: str, stg_taxi_zones_path: str, hourly_output_path: str, daily_output_path: str) -> None:
+def run(
+    stg_trips_path: str, stg_taxi_zones_path: str, hourly_output_path: str, daily_output_path: str
+) -> None:
     spark = build_spark_session(app_name="taxipulse-warehouse-marts")
     stg_trips = spark.read.format("delta").load(stg_trips_path)
     stg_taxi_zones = spark.read.format("delta").load(stg_taxi_zones_path)
@@ -63,15 +67,9 @@ def run(stg_trips_path: str, stg_taxi_zones_path: str, hourly_output_path: str, 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stg-trips-path", default="warehouse_output/staging/stg_trips")
-    parser.add_argument(
-        "--stg-taxi-zones-path", default="warehouse_output/staging/stg_taxi_zones"
-    )
-    parser.add_argument(
-        "--hourly-output-path", default="warehouse_output/marts/zone_demand_hourly"
-    )
-    parser.add_argument(
-        "--daily-output-path", default="warehouse_output/marts/zone_demand_daily"
-    )
+    parser.add_argument("--stg-taxi-zones-path", default="warehouse_output/staging/stg_taxi_zones")
+    parser.add_argument("--hourly-output-path", default="warehouse_output/marts/zone_demand_hourly")
+    parser.add_argument("--daily-output-path", default="warehouse_output/marts/zone_demand_daily")
     return parser.parse_args(argv)
 
 

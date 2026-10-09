@@ -71,9 +71,7 @@ def test_parse_with_dead_letter_routes_dropoff_before_pickup_to_dead_letter(spar
 
 
 def test_parse_with_dead_letter_defaults_optional_fields(spark):
-    payload = {
-        k: v for k, v in VALID_PAYLOAD.items() if k not in ("passenger_count", "tip_amount")
-    }
+    payload = {k: v for k, v in VALID_PAYLOAD.items() if k not in ("passenger_count", "tip_amount")}
     df = spark.createDataFrame([(json.dumps(payload),)], ["body"])
 
     valid, _ = parse_with_dead_letter(df)
