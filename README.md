@@ -266,7 +266,16 @@ curl http://localhost:8000/zones/top?limit=5
       zones, real demand/forecast numbers, correct 404s, reading live
       from Azure storage. Infrastructure was torn down afterward to
       control cost (same discipline as every cloud step in this project).
-- [ ] **Phase 5** — Full CI/CD, Azure federated identity credentials (OIDC).
+- [x] **Phase 5 — full CI/CD, verified with a real GitHub Actions run** —
+      GitHub Actions authenticates to Azure via a federated identity
+      credential (OIDC): no client secret or JSON key stored anywhere,
+      just identifiers as repo secrets. CI now runs `terraform fmt`/
+      `validate` on every push and PR (no Azure credentials needed for
+      that), and on push to `main`: `terraform plan` and a real
+      `docker build` + push to Azure Container Registry, both via the
+      OIDC-authenticated identity. Confirmed working end to end: a live
+      run with all four jobs green, and the pushed image tag verified
+      directly against the registry.
 - [ ] **Phase 6** — Performance, model quality, and cost measurements; README
       finalization.
 
