@@ -31,3 +31,98 @@ jobs:
 
       - name: Run tests
         run: pytest
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: terraform fmt -check
+        run: terraform fmt -check -recursive infra/
+
+      - name: terraform init (no backend, no credentials needed)
+        working-directory: infra/envs/dev
+        run: terraform init -backend=false
+
+      - name: terraform validate
+        working-directory: infra/envs/dev
+        run: terraform validate
+
+  # Only on push to main - the OIDC federated credential is scoped to
+  # exactly that trigger (see infra/modules/federated_identity), so a
+  # fork's pull_request run couldn't successfully exchange a token here
+  # even if this job did attempt it. No Azure credential of any kind is
+  # stored in this repo - azure/login exchanges GitHub's own short-lived
+  # OIDC token for an Azure AD token at request time.
+  terraform-plan:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: terraform-validate
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: terraform init
+        working-directory: infra/envs/dev
+        run: terraform init
+
+      - name: terraform plan
+        working-directory: infra/envs/dev
+        env:
+          ARM_USE_OIDC: "true"
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        # terraform.tfvars is gitignored (no secrets in the repo), so the
+        # one var without a safe default is passed explicitly above. No
+        # -target here: this plans the FULL config (not just the always-on
+        # pieces) from a from-scratch local state, so resource_group/
+        # container_registry/federated_identity (already deployed) show as
+        # "no changes" while storage/container_apps (ephemeral, usually torn
+        # down between sessions) show as "to add" - that's expected, not a
+        # sign anything is broken.
+        run: terraform plan
+
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name taxipulsemdsacr
+
+      - name: Build and push
+        run: |
+          docker build \
+            -t taxipulsemdsacr.azurecr.io/taxipulse-api:${{ github.sha }} \
+            -t taxipulsemdsacr.azurecr.io/taxipulse-api:latest \
+            api/
+          docker push taxipulsemdsacr.azurecr.io/taxipulse-api:${{ github.sha }}
+          docker push taxipulsemdsacr.azurecr.io/taxipulse-api:latest
