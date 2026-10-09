@@ -21,8 +21,24 @@ variable "api_image_tag" {
   default     = "latest"
 }
 
-variable "github_repo" {
-  description = "owner/name of the GitHub repo trusted by the OIDC federated identity credential"
+variable "github_repo_owner" {
+  type    = string
+  default = "sanogomamadou"
+}
+
+variable "github_owner_id" {
+  description = "Immutable numeric GitHub owner ID - gh api repos/OWNER/REPO --jq .owner.id (see federated_identity module's comment for why this is needed, not just the login name)"
   type        = string
-  default     = "sanogomamadou/TaxiPulse"
+  default     = "155233565"
+}
+
+variable "github_repo_name" {
+  type    = string
+  default = "TaxiPulse"
+}
+
+variable "github_repo_id" {
+  description = "Immutable numeric GitHub repo ID - gh api repos/OWNER/REPO --jq .id"
+  type        = string
+  default     = "1383888067"
 }

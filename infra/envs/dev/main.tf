@@ -54,7 +54,10 @@ module "federated_identity" {
   resource_group_id     = module.resource_group.id
   location              = var.location
   name_prefix           = var.name_prefix
-  github_repo           = var.github_repo
+  github_repo_owner     = var.github_repo_owner
+  github_owner_id       = var.github_owner_id
+  github_repo_name      = var.github_repo_name
+  github_repo_id        = var.github_repo_id
   container_registry_id = module.container_registry.id
 }
 

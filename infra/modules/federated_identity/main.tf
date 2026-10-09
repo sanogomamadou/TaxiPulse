@@ -19,7 +19,14 @@ resource "azurerm_federated_identity_credential" "main_branch" {
   user_assigned_identity_id = azurerm_user_assigned_identity.github_actions.id
   audience                  = ["api://AzureADTokenExchange"]
   issuer                    = "https://token.actions.githubusercontent.com"
-  subject                   = "repo:${var.github_repo}:ref:refs/heads/main"
+  # The classic `repo:owner/repo:ref:refs/heads/main` format does NOT
+  # match what GitHub actually presents for this repo - a real `AADSTS
+  # 700213: No matching federated identity record` from a live CI run
+  # showed the true subject includes immutable numeric owner/repo IDs
+  # appended to the names (`owner@ID/repo@ID`), not just the names alone.
+  # Hardcoded to the exact string the live token presented rather than
+  # the documented-everywhere-but-apparently-outdated classic format.
+  subject = "repo:${var.github_repo_owner}@${var.github_owner_id}/${var.github_repo_name}@${var.github_repo_id}:ref:refs/heads/main"
 }
 
 # Contributor on the resource group - broad enough for `terraform plan`/
