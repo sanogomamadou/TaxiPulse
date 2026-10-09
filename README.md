@@ -216,6 +216,17 @@ make api-run
 curl http://localhost:8000/zones/top?limit=5
 ```
 
+### Measuring performance
+
+Produces the real numbers in [Measured results](#measured-results) below -
+batch throughput/volume/forecast-accuracy from local artifacts, plus Azure
+cost via the real Cost Management API (skipped gracefully without `az
+login`, not a hard requirement).
+
+```bash
+make measure
+```
+
 ## Roadmap
 
 - [x] **Phase 0** — Monorepo scaffolding, `CLAUDE.md`, README, Makefile, `pyproject.toml`,
@@ -276,13 +287,55 @@ curl http://localhost:8000/zones/top?limit=5
       OIDC-authenticated identity. Confirmed working end to end: a live
       run with all four jobs green, and the pushed image tag verified
       directly against the registry.
-- [ ] **Phase 6** — Performance, model quality, and cost measurements; README
-      finalization.
+- [x] **Phase 6** — Performance, model quality, and cost measurements, all
+      real (not estimated) - see [Measured results](#measured-results)
+      above, produced by `scripts/measure_performance.py` plus the real
+      Azure Cost Management API. README finalized.
+
+**All six phases complete.** TaxiPulse is a working, measured, end-to-end
+data platform: replayer → Event Hubs → Spark Structured Streaming →
+Delta Lake warehouse → Prophet forecasting → Airflow orchestration →
+FastAPI serving layer, built and verified locally first at every step,
+deployed for real to Azure (Event Hubs, Databricks, ADLS Gen2, Container
+Registry, Container Apps), orchestrated by a real local Airflow deployment,
+and shipped through a real CI/CD pipeline authenticating via OIDC with zero
+stored cloud credentials - for a real, measured cost of $1.37.
 
 ## Measured results
 
-_To be filled in during Phase 6: throughput (messages/s), end-to-end latency, data
-volume processed, forecasting model accuracy (MAE / MAPE), and infrastructure cost._
+Real numbers, not estimates - produced by `scripts/measure_performance.py`
+(batch throughput, volume, forecast accuracy) plus two measurements taken
+live during actual cloud sessions (API latency, Azure cost via the Cost
+Management API). See the script for exactly how each figure is derived
+and what it deliberately does *not* claim to measure.
+
+| Metric | Value | Source |
+|---|---|---|
+| Batch processing throughput | 212 trips/s (batch_ingest → staging → marts) | `scripts/measure_performance.py`, local Spark `local[*]` |
+| Spark session startup (one-time, separate from the above) | 36.1 s | Same run - JVM/Delta-Ivy cold start, independent of data volume |
+| Forecast accuracy | avg MAE 0.28, avg MAPE 22.4% across 10 zones | `demand_forecast` mart (Prophet, held-out tail) |
+| Data volume | 2,968 trips ingested from a 101 KB / ~5,000-row TLC sample → 750 KB of Delta output | `batch_ingest` |
+| Deployed API latency | ~750 ms – 1 s per request | Real Azure Container App, live HTTPS endpoint (Phase 4) |
+| Azure cost (this project, all phases, month-to-date) | **$1.37 USD total** | Azure Cost Management API (real billing, not a pricing estimate) |
+
+**Cost breakdown by service** (illustrates where the money actually went -
+notably, Databricks' auto-provisioned NAT Gateway + VNet cost more than
+Event Hubs or the Container Registry, despite never running a cluster):
+
+| Service | Cost (USD) |
+|---|---|
+| NAT Gateway (Databricks-managed network) | $0.706 |
+| Event Hubs | $0.405 |
+| Virtual Network (Databricks-managed) | $0.078 |
+| Container Registry | $0.178 |
+| Storage | $0.0007 |
+| Container Apps | $0.0016 |
+| Service Bus | <$0.0001 |
+
+The deployed API's latency is dominated by `services/warehouse.py`
+re-reading the entire Delta table from remote storage on every request -
+a known, named limitation (no caching layer), not an artifact of the
+network hop alone. See CLAUDE.md's Phase 4 notes for the full reasoning.
 
 ## License
 
