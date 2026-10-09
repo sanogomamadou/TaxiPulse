@@ -253,17 +253,19 @@ curl http://localhost:8000/zones/top?limit=5
       the same file read from a container mount double-counted every trip)
       that a single-environment run could never have exposed. A short real
       Databricks deployment is deferred to the next live-cloud session.
-- [x] **Phase 4 (local build) — code-complete, verified end-to-end against
-      real data in a real container** — FastAPI service serving per-zone
-      KPIs, demand history, forecasts, and live spike detection, reading
-      Delta tables directly via `deltalake` (no JVM/Spark needed to serve
-      already-computed results). Built and ran the actual Docker image
-      (875MB - fastapi/uvicorn/pydantic/deltalake/pandas only, vs. 4.36GB
-      for the warehouse's Airflow image, which genuinely needs pyspark +
-      Java) against the real warehouse output: all
-      265 zones, real demand/forecast numbers, correct 404s and empty
-      results where expected. Azure Container Apps deployment is the next
-      live-cloud step.
+- [x] **Phase 4 — code-complete AND deployed to real Azure** — FastAPI
+      service serving per-zone KPIs, demand history, forecasts, and live
+      spike detection, reading Delta tables directly via `deltalake` (no
+      JVM/Spark needed to serve already-computed results). Verified
+      locally first (built and ran the actual Docker image - 875MB vs.
+      4.36GB for the warehouse's Airflow image, which genuinely needs
+      pyspark + Java), then deployed for real: Azure Container Registry +
+      a Container Apps environment via Terraform, the real image pushed,
+      the real warehouse output uploaded to ADLS Gen2, and the deployed
+      app verified end to end over its live HTTPS endpoint - all 265
+      zones, real demand/forecast numbers, correct 404s, reading live
+      from Azure storage. Infrastructure was torn down afterward to
+      control cost (same discipline as every cloud step in this project).
 - [ ] **Phase 5** — Full CI/CD, Azure federated identity credentials (OIDC).
 - [ ] **Phase 6** — Performance, model quality, and cost measurements; README
       finalization.
