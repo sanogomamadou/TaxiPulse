@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-cov sample-data taxi-zones warehouse-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast api-dev api-build api-run emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy
+.PHONY: help install lint format test test-cov sample-data taxi-zones warehouse-zones warehouse-batch-ingest warehouse-staging warehouse-marts warehouse-quality warehouse-forecast api-dev api-build api-run emulator-up emulator-down emulator-setup replay tf-init tf-fmt tf-validate tf-plan tf-apply clean destroy destroy-all
 
 # No component under */src is pip-installed (see pyproject.toml's
 # [tool.setuptools] comment) - pytest resolves them via its own
@@ -34,7 +34,8 @@ help:
 	@echo "  tf-plan          terraform plan (infra/envs/dev)"
 	@echo "  tf-apply         terraform apply (infra/envs/dev, asks for confirmation)"
 	@echo "  clean            Remove caches and build artifacts"
-	@echo "  destroy          Destroy ALL Azure resources managed by Terraform (asks for confirmation)"
+	@echo "  destroy          Destroy ephemeral demo resources only (storage/container_apps/event_hubs/databricks)"
+	@echo "  destroy-all      Destroy EVERYTHING, including the persistent CI/CD infra (resource group, ACR, identity)"
 
 install:
 	python -m pip install --upgrade pip
@@ -132,9 +133,29 @@ clean:
 	find . -type d -name "__pycache__" -not -path "./.git/*" -exec rm -rf {} +
 	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov .coverage
 
-# Destroys every Azure resource created via Terraform. Run this at the end
-# of EVERY cloud session to avoid burning through the $100 student credit.
+# Destroys the EPHEMERAL demo resources only (storage, container apps,
+# event hubs, databricks) - NOT the resource group / Container Registry /
+# GitHub Actions federated identity, which stay up permanently so CI can
+# keep pushing images. Run this at the end of every cloud demo session to
+# avoid burning through the $100 student credit; the persistent pieces
+# cost only a few $/month (Basic ACR).
 destroy:
-	@echo "This will DESTROY all Azure resources managed by Terraform in infra/envs/dev."
+	@echo "This will DESTROY the ephemeral demo resources (storage, container_apps, event_hubs, databricks)."
+	@echo "The resource group, Container Registry, and GitHub Actions identity stay up for CI - use destroy-all for those too."
 	@read -p "Type 'destroy' to confirm: " confirm && [ "$$confirm" = "destroy" ] || (echo "Aborted."; exit 1)
+	cd infra/envs/dev && terraform destroy \
+		-target=module.storage \
+		-target=module.container_apps \
+		-target=module.event_hubs \
+		-target=module.databricks \
+		-target=module.identities
+
+# Destroys EVERYTHING, including the persistent CI/CD infrastructure
+# (resource group, Container Registry, GitHub Actions federated identity).
+# After this, CI's build-and-push-image/terraform-plan jobs will fail
+# until the persistent resources are re-applied - only run this if you're
+# genuinely done with the project for good.
+destroy-all:
+	@echo "This will DESTROY ALL Azure resources, including the persistent CI/CD infrastructure."
+	@read -p "Type 'destroy-all' to confirm: " confirm && [ "$$confirm" = "destroy-all" ] || (echo "Aborted."; exit 1)
 	cd infra/envs/dev && terraform destroy
