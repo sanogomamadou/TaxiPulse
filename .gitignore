@@ -33,6 +33,7 @@ service-account*.json
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+tfplan*
 crash.log
 crash.*.log
 # .terraform.lock.hcl is intentionally NOT ignored - it pins provider

@@ -33,3 +33,13 @@ output "container_registry_login_server" {
 output "api_fqdn" {
   value = module.container_apps.fqdn
 }
+
+output "github_actions_client_id" {
+  description = "AZURE_CLIENT_ID for the GitHub Actions OIDC login step"
+  value       = module.federated_identity.client_id
+}
+
+output "github_actions_tenant_id" {
+  description = "AZURE_TENANT_ID for the GitHub Actions OIDC login step"
+  value       = module.federated_identity.tenant_id
+}

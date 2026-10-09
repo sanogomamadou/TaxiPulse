@@ -20,3 +20,9 @@ variable "api_image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "github_repo" {
+  description = "owner/name of the GitHub repo trusted by the OIDC federated identity credential"
+  type        = string
+  default     = "sanogomamadou/TaxiPulse"
+}

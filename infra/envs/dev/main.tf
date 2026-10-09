@@ -47,6 +47,17 @@ module "container_registry" {
   registry_name       = replace("${var.name_prefix}acr", "-", "")
 }
 
+module "federated_identity" {
+  source = "../../modules/federated_identity"
+
+  resource_group_name   = module.resource_group.name
+  resource_group_id     = module.resource_group.id
+  location              = var.location
+  name_prefix           = var.name_prefix
+  github_repo           = var.github_repo
+  container_registry_id = module.container_registry.id
+}
+
 module "container_apps" {
   source = "../../modules/container_apps"
 
